@@ -1,17 +1,19 @@
 #include <TH1F.h>
 #include <TH2F.h>
-#include <TH3F.h>
-#include <TROOT.h>
-#include <TFile.h>
-#include <TSystem.h>
-#include "TRandom.h"
-#include <TLorentzVector.h>
-#include <TTree.h>
-#include <TChain.h>
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+#include "TFile.h"
+#include "TSystemFile.h"
+#include "TSystem.h"
+#include "TMath.h"
+#include "TTree.h"
+#include "TChain.h"
 #include "TTreeReader.h"
 #include "TTreeReaderValue.h"
 #include "TTreeReaderArray.h"
-
 
 #include "FWCore/FWLite/interface/FWLiteEnabler.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -20,6 +22,7 @@
 
 #include "DataFormats/FWLite/interface/InputSource.h"
 #include "DataFormats/FWLite/interface/OutputFiles.h"
+
 #include "PhysicsTools/FWLite/interface/TFileService.h"
 
 
@@ -36,12 +39,15 @@ float theta(float px1, float py1, float pz1, float px2, float py2, float pz2) {
     return dotProduct / (mag1 * mag2);
 }
 
+//int main(int argc, char* argv[]) {
+//}
 
 using namespace std;
 int main(int argc, char* argv[]) {
 
   // load framework libraries
   gSystem->Load( "libFWCoreFWLite" );
+  gSystem->Load( "lPhysics" );
   FWLiteEnabler::enable();
 
   if ( argc < 2 ) {
@@ -109,7 +115,7 @@ int main(int argc, char* argv[]) {
   TTreeReaderArray<float> py(      particleReader, "py");
   TTreeReaderArray<float> pz(      particleReader, "pz");
   TTreeReaderArray<float> mass(      particleReader, "mass");
-  TTreeReaderArray<Short_t> charge(  particleReader, "charge");
+  //TTreeReaderArray<Short_t> charge(  particleReader, "charge");
 
   TTree *_outTree;
   Float_t Weight, EEC, r;
@@ -138,7 +144,7 @@ int main(int argc, char* argv[]) {
       for (int j = 0; j < *nParticle; ++j) {
 	cout << px[i] << "\n";
 	if (i >= j) continue;
-	if (std::abs(charge[i]) < 0.01 || std::abs(charge[j]) < 0.01) continue;
+	//if (std::abs(charge[i]) < 0.01 || std::abs(charge[j]) < 0.01) continue;
 	float Eij = E_ij(px[i], py[i], pz[i], mass[i],
 			 px[j], py[j], pz[j], mass[j]);
 	float r = theta(px[i], py[i], pz[i], 
