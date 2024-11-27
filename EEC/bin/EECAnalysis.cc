@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <typeinfo>
 
 #include "TFile.h"
 #include "TSystemFile.h"
@@ -14,6 +15,7 @@
 #include "TTreeReader.h"
 #include "TTreeReaderValue.h"
 #include "TTreeReaderArray.h"
+#include "TClonesArray.h"
 
 #include "FWCore/FWLite/interface/FWLiteEnabler.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -47,7 +49,6 @@ int main(int argc, char* argv[]) {
 
   // load framework libraries
   gSystem->Load( "libFWCoreFWLite" );
-  gSystem->Load( "lPhysics" );
   FWLiteEnabler::enable();
 
   if ( argc < 2 ) {
@@ -68,35 +69,30 @@ int main(int argc, char* argv[]) {
   const edm::ParameterSet& ana = process.getParameter<edm::ParameterSet>("EECAnalysis");
   bool isData_( ana.getParameter<bool>("IsData") );
   int nEvt_( inputHandler_.maxEvents() );
-
-  //string inputFile=inputHandler_.files();
-  //cout << "Input File: " << inputFile << endl;
   
-  TChain *fChain;
-  fChain = new TChain("t");
+//  TChain *fChain;
+//  fChain = new TChain("t");
+//
+//  for(unsigned int iFile=0; iFile<inputHandler_.files().size(); ++iFile){
+//    string inputFile=inputHandler_.files()[iFile];
+//    cout << "File: " << inputFile << endl;
+//    fChain->Add(inputFile.c_str());
+//  }
 
-  for(unsigned int iFile=0; iFile<inputHandler_.files().size(); ++iFile){
-    string inputFile=inputHandler_.files()[iFile];
-    cout << "File: " << inputFile << endl;
-    fChain->Add(inputFile.c_str());
-  }
+//  Long64_t nevents(0);
+//  if (nEvt_>0){
+//    nevents=nEvt_;
+//  }else{
+//    nevents=fChain->GetEntries();
+//  }
+//
+//  cout << "Number of events: " << nevents << endl;
 
-  Long64_t nevents(0);
-  if (nEvt_>0){
-    nevents=nEvt_;
-  }else{
-    nevents=fChain->GetEntries();
-  }
-
-  cout << "Number of events: " << nevents << endl;
-
-  //vector<Float_t>  *px = nullptr, *py = nullptr, *pz = nullptr, *mass = nullptr, *charge = nullptr;
 //  Float_t Energy;
 //  Int_t EventNo, nParticle;
 //  Float_t *px = nullptr, *py = nullptr, *pz = nullptr, *mass = nullptr;
-//  //Short_t *charge = nullptr;
 //  Short_t *charge = nullptr;
-//  
+  
 //  fChain->SetBranchAddress("Energy", &Energy);
 //  fChain->SetBranchAddress("EventNo", &EventNo);
 //  fChain->SetBranchAddress("nParticle", &nParticle);
@@ -105,17 +101,21 @@ int main(int argc, char* argv[]) {
 //  fChain->SetBranchAddress("pz", &pz);
 //  fChain->SetBranchAddress("mass", &mass);
 //  fChain->SetBranchAddress("charge", &charge);
+//
+//  fChain->SetMakeClass(1);
 
-  TTreeReader particleReader(fChain);
+  string inputFile=inputHandler_.files()[0];
+  TFile *myFile = TFile::Open(inputFile.c_str());
 
+  TTreeReader particleReader("t", myFile);
   TTreeReaderValue<int> nParticle(   particleReader, "NParticle");
   TTreeReaderValue<int> EventNo(   particleReader, "EventNo");
-  TTreeReaderValue<float> Energy(   particleReader, "Energy");
+  TTreeReaderArray<float> Energy(   particleReader, "Energy");
   TTreeReaderArray<float> px(      particleReader, "px");
   TTreeReaderArray<float> py(      particleReader, "py");
   TTreeReaderArray<float> pz(      particleReader, "pz");
   TTreeReaderArray<float> mass(      particleReader, "mass");
-  //TTreeReaderArray<Short_t> charge(  particleReader, "charge");
+  TTreeReaderArray<Short_t> charge(  particleReader, "charge");
 
   TTree *_outTree;
   Float_t Weight, EEC, r;
@@ -131,35 +131,36 @@ int main(int argc, char* argv[]) {
   _outTree->Branch("r",   &r  ,  "r/F");
   _outTree->Branch("Event",   &Event  ,  "Event/I");
 
-  int N = 0;
-  for (Long64_t entry = 0; entry < nevents; ++entry) {
-    cout << entry << endl;
-    //fChain->GetEntry(entry);
-    particleReader.Next();
-    cout << *nParticle << endl;
-    float E = *Energy;
-    Event = *EventNo;
-    
-    for (int i = 0; i < *nParticle; ++i) {
-      for (int j = 0; j < *nParticle; ++j) {
-	cout << px[i] << "\n";
-	if (i >= j) continue;
-	//if (std::abs(charge[i]) < 0.01 || std::abs(charge[j]) < 0.01) continue;
-	float Eij = E_ij(px[i], py[i], pz[i], mass[i],
-			 px[j], py[j], pz[j], mass[j]);
-	float r = theta(px[i], py[i], pz[i], 
-			px[j], py[j], pz[j]);
-	
-	//h->Fill(r, Eij / (E * E));
-	EEC = Eij / (E * E);
-	r = r;
-	if (isData_) Weight = 1.;
-	else Weight = 1.;
-	_outTree -> Fill();
-      }
-    }
-    ++N;
-  }
+//  int N = 0;
+//  for (Long64_t entry = 0; entry < nevents; ++entry) {
+//    cout << entry << endl;
+//    //fChain->GetEntry(entry);
+//    //fChain->Print();
+//    particleReader.Next();
+//    //cout << nParticle << endl;
+//    //cout << typeid(*px).name() << endl;
+//    float E = *Energy;
+//    Event = *EventNo;
+//    
+//    for (int i = 0; i < *nParticle; ++i) {
+//      for (int j = 0; j < *nParticle; ++j) {
+//	if (i >= j) continue;
+//	if (std::abs(charge[i]) < 0.01 || std::abs(charge[j]) < 0.01) continue;
+//	float Eij = E_ij(px[i], py[i], pz[i], mass[i],
+//			 px[j], py[j], pz[j], mass[j]);
+//	float r = theta(px[i], py[i], pz[i], 
+//			px[j], py[j], pz[j]);
+//	
+//	//h->Fill(r, Eij / (E * E));
+//	EEC = Eij / (E * E);
+//	r = r;
+//	if (isData_) Weight = 1.;
+//	else Weight = 1.;
+//	_outTree -> Fill();
+//      }
+//    }
+//    ++N;
+//  }
 
   OutFile->cd();
   _outTree->Write();
