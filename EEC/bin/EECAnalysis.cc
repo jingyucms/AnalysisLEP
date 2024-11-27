@@ -41,96 +41,96 @@ float theta(float px1, float py1, float pz1, float px2, float py2, float pz2) {
     return dotProduct / (mag1 * mag2);
 }
 
-//int main(int argc, char* argv[]) {
-//}
-
-using namespace std;
 int main(int argc, char* argv[]) {
+}
 
-  // load framework libraries
-  gSystem->Load( "libFWCoreFWLite" );
-  FWLiteEnabler::enable();
-
-  if ( argc < 2 ) {
-    cout << "Usage : " << argv[0] << " [parameters.py]" << std::endl;
-    return 0;
-  }
-
-  if( !edm::cmspybind11::readPSetsFrom(argv[1])->existsAs<edm::ParameterSet>("process") ){
-    cout << " ERROR: ParametersSet 'process' is missing in your configuration file" << endl;
-    exit(0);
-  }
-  
-  // get the python configuration
-  const edm::ParameterSet& process = edm::cmspybind11::readPSetsFrom(argv[1])->getParameter<edm::ParameterSet>("process");
-  fwlite::InputSource inputHandler_(process);
-  fwlite::OutputFiles outputHandler_(process);
-
-  const edm::ParameterSet& ana = process.getParameter<edm::ParameterSet>("EECAnalysis");
-  bool isData_( ana.getParameter<bool>("IsData") );
-  int nEvt_( inputHandler_.maxEvents() );
-  
-//  TChain *fChain;
-//  fChain = new TChain("t");
+//using namespace std;
+//int main(int argc, char* argv[]) {
 //
-//  for(unsigned int iFile=0; iFile<inputHandler_.files().size(); ++iFile){
-//    string inputFile=inputHandler_.files()[iFile];
-//    cout << "File: " << inputFile << endl;
-//    fChain->Add(inputFile.c_str());
-//  }
-
-//  Long64_t nevents(0);
-//  if (nEvt_>0){
-//    nevents=nEvt_;
-//  }else{
-//    nevents=fChain->GetEntries();
+//  // load framework libraries
+//  gSystem->Load( "libFWCoreFWLite" );
+//  FWLiteEnabler::enable();
+//
+//  if ( argc < 2 ) {
+//    cout << "Usage : " << argv[0] << " [parameters.py]" << std::endl;
+//    return 0;
 //  }
 //
-//  cout << "Number of events: " << nevents << endl;
-
-//  Float_t Energy;
-//  Int_t EventNo, nParticle;
-//  Float_t *px = nullptr, *py = nullptr, *pz = nullptr, *mass = nullptr;
-//  Short_t *charge = nullptr;
-  
-//  fChain->SetBranchAddress("Energy", &Energy);
-//  fChain->SetBranchAddress("EventNo", &EventNo);
-//  fChain->SetBranchAddress("nParticle", &nParticle);
-//  fChain->SetBranchAddress("px", &px);
-//  fChain->SetBranchAddress("py", &py);
-//  fChain->SetBranchAddress("pz", &pz);
-//  fChain->SetBranchAddress("mass", &mass);
-//  fChain->SetBranchAddress("charge", &charge);
+//  if( !edm::cmspybind11::readPSetsFrom(argv[1])->existsAs<edm::ParameterSet>("process") ){
+//    cout << " ERROR: ParametersSet 'process' is missing in your configuration file" << endl;
+//    exit(0);
+//  }
+//  
+//  // get the python configuration
+//  const edm::ParameterSet& process = edm::cmspybind11::readPSetsFrom(argv[1])->getParameter<edm::ParameterSet>("process");
+//  fwlite::InputSource inputHandler_(process);
+//  fwlite::OutputFiles outputHandler_(process);
 //
-//  fChain->SetMakeClass(1);
-
-  string inputFile=inputHandler_.files()[0];
-  TFile *myFile = TFile::Open(inputFile.c_str());
-
-  TTreeReader particleReader("t", myFile);
-  TTreeReaderValue<int> nParticle(   particleReader, "NParticle");
-  TTreeReaderValue<int> EventNo(   particleReader, "EventNo");
-  TTreeReaderArray<float> Energy(   particleReader, "Energy");
-  TTreeReaderArray<float> px(      particleReader, "px");
-  TTreeReaderArray<float> py(      particleReader, "py");
-  TTreeReaderArray<float> pz(      particleReader, "pz");
-  TTreeReaderArray<float> mass(      particleReader, "mass");
-  TTreeReaderArray<Short_t> charge(  particleReader, "charge");
-
-  TTree *_outTree;
-  Float_t Weight, EEC, r;
-  Int_t Event;
-
-  string outFile=outputHandler_.file().c_str();
-  cout << "Output written to: " << outFile << endl;
-  TFile* OutFile = TFile::Open(outputHandler_.file().c_str(),"RECREATE");
-
-  _outTree = new TTree("EEC", "EEC");
-  _outTree->Branch("Weight",   &Weight  ,  "Weight/F");
-  _outTree->Branch("EEC",   &EEC  ,  "EEC/F");
-  _outTree->Branch("r",   &r  ,  "r/F");
-  _outTree->Branch("Event",   &Event  ,  "Event/I");
-
+//  const edm::ParameterSet& ana = process.getParameter<edm::ParameterSet>("EECAnalysis");
+//  bool isData_( ana.getParameter<bool>("IsData") );
+//  int nEvt_( inputHandler_.maxEvents() );
+//  
+////  TChain *fChain;
+////  fChain = new TChain("t");
+////
+////  for(unsigned int iFile=0; iFile<inputHandler_.files().size(); ++iFile){
+////    string inputFile=inputHandler_.files()[iFile];
+////    cout << "File: " << inputFile << endl;
+////    fChain->Add(inputFile.c_str());
+////  }
+//
+////  Long64_t nevents(0);
+////  if (nEvt_>0){
+////    nevents=nEvt_;
+////  }else{
+////    nevents=fChain->GetEntries();
+////  }
+////
+////  cout << "Number of events: " << nevents << endl;
+//
+////  Float_t Energy;
+////  Int_t EventNo, nParticle;
+////  Float_t *px = nullptr, *py = nullptr, *pz = nullptr, *mass = nullptr;
+////  Short_t *charge = nullptr;
+//  
+////  fChain->SetBranchAddress("Energy", &Energy);
+////  fChain->SetBranchAddress("EventNo", &EventNo);
+////  fChain->SetBranchAddress("nParticle", &nParticle);
+////  fChain->SetBranchAddress("px", &px);
+////  fChain->SetBranchAddress("py", &py);
+////  fChain->SetBranchAddress("pz", &pz);
+////  fChain->SetBranchAddress("mass", &mass);
+////  fChain->SetBranchAddress("charge", &charge);
+////
+////  fChain->SetMakeClass(1);
+//
+//  string inputFile=inputHandler_.files()[0];
+//  TFile *myFile = TFile::Open(inputFile.c_str());
+//
+//  TTreeReader particleReader("t", myFile);
+//  TTreeReaderValue<int> nParticle(   particleReader, "NParticle");
+//  TTreeReaderValue<int> EventNo(   particleReader, "EventNo");
+//  TTreeReaderArray<float> Energy(   particleReader, "Energy");
+//  TTreeReaderArray<float> px(      particleReader, "px");
+//  TTreeReaderArray<float> py(      particleReader, "py");
+//  TTreeReaderArray<float> pz(      particleReader, "pz");
+//  TTreeReaderArray<float> mass(      particleReader, "mass");
+//  TTreeReaderArray<Short_t> charge(  particleReader, "charge");
+//
+//  TTree *_outTree;
+//  Float_t Weight, EEC, r;
+//  Int_t Event;
+//
+//  string outFile=outputHandler_.file().c_str();
+//  cout << "Output written to: " << outFile << endl;
+//  TFile* OutFile = TFile::Open(outputHandler_.file().c_str(),"RECREATE");
+//
+//  _outTree = new TTree("EEC", "EEC");
+//  _outTree->Branch("Weight",   &Weight  ,  "Weight/F");
+//  _outTree->Branch("EEC",   &EEC  ,  "EEC/F");
+//  _outTree->Branch("r",   &r  ,  "r/F");
+//  _outTree->Branch("Event",   &Event  ,  "Event/I");
+//
 //  int N = 0;
 //  for (Long64_t entry = 0; entry < nevents; ++entry) {
 //    cout << entry << endl;
@@ -161,8 +161,8 @@ int main(int argc, char* argv[]) {
 //    }
 //    ++N;
 //  }
-
-  OutFile->cd();
-  _outTree->Write();
-  OutFile->Close();
-}
+//
+//  OutFile->cd();
+//  _outTree->Write();
+//  OutFile->Close();
+//}
