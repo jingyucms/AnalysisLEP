@@ -26,8 +26,6 @@ eijbins1 = (base ** log_values)
 eijbins1 = np.concatenate([[0], eijbins1])
 eijbins1 = np.concatenate([eijbins1, [1]])
 
-print(eijbins1)
-
 eijbins2 = [0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.00225, 0.0025, 0.00275, 0.003, 0.0035, 0.004, 0.005, 0.007, 0.01, 0.02, 0.03, 0.04, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 1]
 
 rbins = calcBinEdge(0.001, np.pi/2, 100)
@@ -89,6 +87,10 @@ class MyResponse:
 
     def bookHistograms(self):
 
+        hname = 'counter'
+        self._hists[hname] = ROOT.TH1F(hname, hname, 1, 0, 1)
+
+        # EEC hists
         hname = 'reco2d_eij_r_bin1'
         self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
@@ -150,15 +152,26 @@ class MyResponse:
         hname = 'miss_eij_bin2'
         self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins2)-1, eijbins2)
 
-        hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 1, 0, 1)
+        # pt eta phi hists
+        for c in ['match', 'fake', 'miss']:
+            hname = f'reco_{c}_pt'
+            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+
+            hname = f'gen_{c}_pt'
+            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+
+            hname = f'reco_{c}_theta'
+            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+
+            hname = f'gen_{c}_theta'
+            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+
 
     def bookResponseMatrices(self):
 
         respname = 'response2d_eij_r_bin1'
         self._resps[respname] = ROOT.RooUnfoldResponse(respname, respname)
         self._resps[respname].Setup(self._hists['reco2d_eij_r_bin1'], self._hists['gen2d_eij_r_bin1'])
-        #self._resps[respname].UseSparse(True)
 
         respname = 'response2d_eij_r_bin2'
         self._resps[respname] = ROOT.RooUnfoldResponse(respname, respname)
@@ -175,19 +188,19 @@ class MyResponse:
             self._tgen.GetEntry(n)
             self._treco.GetEntry(n)
             
-            ## event selection
-            stheta_gen = self._tgen.STheta
-            pmag_gen = np.array(self._tgen.pmag)
-            p = np.sum(pmag_gen)
-            if not self._treco.passesLEP1TwoPC or stheta_gen < 0.615 or stheta_gen > 2.526 or p < 15: continue
+            
+            ## gen event selection
+            if self._treco.passesSTheta < 0.5: continue
+
+            ## reco event selection
+            if self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5: continue
 
             ## gen track selection
             c_gen = np.array(self._tgen.charge)
             pt_gen = np.array(self._tgen.pt)
             theta_gen = np.array(self._tgen.theta)
-            pwflag_gen = np.array(self._tgen.pwflag)
             hp_gen = np.array(self._tgen.highPurity)
-            sel_gen = (abs(c_gen) > 0.1) & (pt_gen > 0.2) & (theta_gen < 2.788) & (theta_gen > 0.353) & (pwflag_gen > -0.1) & (hp_gen > 0.5)
+            sel_gen = (abs(c_gen) > 0.1) & (theta_gen < 2.795) & (theta_gen > 0.348) & (hp_gen > 0.5)
 
             c_gen = c_gen[sel_gen]
             E_gen = self._tgen.Energy
@@ -195,7 +208,8 @@ class MyResponse:
             py_gen = np.array(self._tgen.py)[sel_gen]
             pz_gen = np.array(self._tgen.pz)[sel_gen]
             m_gen = np.array(self._tgen.mass)[sel_gen]
-
+            pt_gen = pt_gen[sel_gen]
+            theta_gen = theta_gen[sel_gen]
 
             ## reco track selection     
             c_reco = np.array(self._treco.charge)
@@ -203,7 +217,7 @@ class MyResponse:
             theta_reco = np.array(self._treco.theta)
             pt_reco = np.array(self._treco.pt)
             hp_reco = np.array(self._treco.highPurity)
-            sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 2.788) & (theta_reco > 0.353) & (hp_reco > 0.5)
+            sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 2.795) & (theta_reco > 0.348) & (hp_reco > 0.5)
         
             c_reco = c_reco[sel_reco]
             E_reco = self._treco.Energy
@@ -211,7 +225,8 @@ class MyResponse:
             py_reco = np.array(self._treco.py)[sel_reco]
             pz_reco = np.array(self._treco.pz)[sel_reco]
             m_reco = np.array(self._treco.mass)[sel_reco]
-
+            pt_reco = pt_reco[sel_reco]
+            theta_reco = theta_reco[sel_reco]
             
             nTrks_reco = len(px_reco)
             nTrks_gen = len(px_gen)
@@ -247,18 +262,25 @@ class MyResponse:
             matched_gen = matched[:, 1]
     
             miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
-            
     
             fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
 
+            # fill response matrices and histograms
+            ## loop over matched
             n_match = 0
             for i in range(len(matched)):
+                i_orig_reco = int(matched[i][0])
+                i_orig_gen = int(matched[i][1])
+                self._hists['reco_match_pt'].Fill(pt_reco[i_orig_reco])
+                self._hists['gen_match_pt'].Fill(pt_gen[i_orig_gen])
+                self._hists['reco_match_theta'].Fill(theta_reco[i_orig_reco])
+                self._hists['gen_match_theta'].Fill(theta_gen[i_orig_gen])
+                
                 for j in range(len(matched)):
                     if i>=j: continue
-                    i_orig_reco = int(matched[i][0])
                     j_orig_reco = int(matched[j][0])
-                    i_orig_gen = int(matched[i][1])
                     j_orig_gen = int(matched[j][1])
+                    
                     Eij_reco = E_ij(px_reco[i_orig_reco], py_reco[i_orig_reco], pz_reco[i_orig_reco], m_reco[i_orig_reco], px_reco[j_orig_reco], py_reco[j_orig_reco], pz_reco[j_orig_reco], m_reco[j_orig_reco])/E_reco**2
                     Eij_gen = E_ij(px_gen[i_orig_gen], py_gen[i_orig_gen], pz_gen[i_orig_gen], m_gen[i_orig_gen], px_gen[j_orig_gen], py_gen[j_orig_gen], pz_gen[j_orig_gen], m_gen[j_orig_gen])/E_gen**2
                     cr_reco = cos_theta(px_reco[i_orig_reco], py_reco[i_orig_reco], pz_reco[i_orig_reco], px_reco[j_orig_reco], py_reco[j_orig_reco], pz_reco[j_orig_reco])
@@ -286,18 +308,20 @@ class MyResponse:
                     self._hists['gen2d_eij_r_bin2'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco1d_eec'].Fill(r_reco, Eij_reco)
-                    if Eij_gen > 0.0001:
-                        self._hists['gen1d_eec'].Fill(r_gen, Eij_gen)
+                    self._hists['gen1d_eec'].Fill(r_gen, Eij_gen)
 
                     self._resps['response2d_eij_r_bin1'].Fill(r_reco, Eij_reco, r_gen, Eij_gen)
                     self._resps['response2d_eij_r_bin2'].Fill(r_reco, Eij_reco, r_gen, Eij_gen)
                     n_match+=1
 
+            ## loop over miss
             n_miss = 0
             for i in range(len(miss)):
+                i_orig = miss[i]
+                self._hists['gen_miss_pt'].Fill(pt_gen[i_orig])
+                self._hists['gen_miss_theta'].Fill(theta_gen[i_orig])
                 for j in range(len(miss)):
                     if i>=j: continue
-                    i_orig = miss[i]
                     j_orig = miss[j]
                     Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
                     cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
@@ -307,12 +331,11 @@ class MyResponse:
                     self._hists['gen2d_eij_r_bin1'].Fill(r, Eij)
                     self._hists['miss_eij_bin2'].Fill(Eij)
                     self._hists['gen2d_eij_r_bin2'].Fill(r, Eij)
-                    if Eij_gen > 0.0001:
-                        self._hists['gen1d_eec'].Fill(r, Eij)
+                    self._hists['gen1d_eec'].Fill(r, Eij)
                     self._resps['response2d_eij_r_bin1'].Miss(r, Eij)
                     self._resps['response2d_eij_r_bin2'].Miss(r, Eij)
                     n_miss+=1
-                    
+
                 for j in range(len(matched)):
                     i_orig = miss[i]
                     j_orig = int(matched[j][1])
@@ -320,8 +343,7 @@ class MyResponse:
                     cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
                     r = theta(cr)
                     self._hists['miss_r'].Fill(r, Eij)
-                    if Eij_gen > 0.0001:
-                        self._hists['gen1d_eec'].Fill(r, Eij)
+                    self._hists['gen1d_eec'].Fill(r, Eij)
                     self._hists['miss_eij_bin1'].Fill(Eij)
                     self._hists['miss_eij_bin2'].Fill(Eij)
                     self._hists['gen2d_eij_r_bin1'].Fill(r, Eij)
@@ -330,11 +352,14 @@ class MyResponse:
                     self._resps['response2d_eij_r_bin2'].Miss(r, Eij)
                     n_miss+=1
 
+            ## loop over fake
             n_fake = 0
             for i in range(len(fake)):
+                i_orig = fake[i]
+                self._hists['reco_fake_pt'].Fill(pt_reco[i_orig])
+                self._hists['reco_fake_theta'].Fill(theta_reco[i_orig])
                 for j in range(len(fake)):
                     if i>=j: continue
-                    i_orig = fake[i]
                     j_orig = fake[j]
                     Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
                     cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
