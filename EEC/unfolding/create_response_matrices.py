@@ -190,7 +190,7 @@ class MyResponse:
             
             
             ## gen event selection
-            if self._treco.passesSTheta < 0.5: continue
+            if self._tgen.passesSTheta < 0.5: continue
 
             ## reco event selection
             if self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5: continue

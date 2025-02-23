@@ -36,17 +36,17 @@ def Proj2D_X(h,ymin,ymax,hname="XXX",Debug=False):
 
 if __name__ == '__main__':
 
-    filenamein = "response_LEP1MC1994_v3.root"
+    filenamein = "response_LEP1MC1994_v4.root"
 
-    filenameout = "unfolded_v3_bin1.root"
+    filenameout = "unfolded_v4_bin2.root"
 
     fin = ROOT.TFile.Open(filenamein)
     
-    response = fin.Get("response2d_eij_r_bin1")
+    response = fin.Get("response2d_eij_r_bin2")
 
-    reco2d = fin.Get("reco2d_eij_r_bin1")
+    reco2d = fin.Get("reco2d_eij_r_bin2")
 
-    gen2d = fin.Get("gen2d_eij_r_bin1")
+    gen2d = fin.Get("gen2d_eij_r_bin2")
 
     normalization = fin.Get("counter").GetBinContent(1)
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     #print(singular.GetSig().Print())
     
     
-    unfold2d = ROOT.RooUnfoldBayes  (response, reco2d, 3)
+    unfold2d = ROOT.RooUnfoldBayes  (response, reco2d, 4)
     unfold2d.HandleFakes(True)
     #unfold2d = ROOT.RooUnfoldInvert  (response, reco2d)
     #unfold2d =ROOT.RooUnfoldBinByBin  (response, reco2d)
@@ -67,9 +67,9 @@ if __name__ == '__main__':
     gen = []
     unfold = []
 
-    eec_reco = Proj2D_X(reco2d, eijbins1[1], eijbins1[-1], f"RECO_EEC")
-    eec_gen = Proj2D_X(gen2d, eijbins1[1], eijbins1[-1], f"GEN_EEC")
-    eec_unfold = Proj2D_X(hUnf2d, eijbins1[1], eijbins1[-1], f"UNFOLD_EEC")
+    eec_reco = Proj2D_X(reco2d, eijbins2[1], eijbins2[-1], f"RECO_EEC")
+    eec_gen = Proj2D_X(gen2d, eijbins2[1], eijbins2[-1], f"GEN_EEC")
+    eec_unfold = Proj2D_X(hUnf2d, eijbins2[1], eijbins2[-1], f"UNFOLD_EEC")
     eec_reco.SetDirectory(0)
     eec_gen.SetDirectory(0)
     eec_unfold.SetDirectory(0)
@@ -78,10 +78,10 @@ if __name__ == '__main__':
     eec_gen.Scale(0.)
     eec_unfold.Scale(0.)
 
-    for i in range(len(eijbins1)-1):
-        reco1d = Proj2D_X(reco2d, eijbins1[i], eijbins1[i+1], f"RECO_Eij_Bin{i}")
-        gen1d = Proj2D_X(gen2d, eijbins1[i], eijbins1[i+1], f"GEN_Eij_Bin{i}")
-        unfold1d = Proj2D_X(hUnf2d, eijbins1[i], eijbins1[i+1], f"UNFOLD_Eij_Bin{i}")
+    for i in range(len(eijbins2)-1):
+        reco1d = Proj2D_X(reco2d, eijbins2[i], eijbins2[i+1], f"RECO_Eij_Bin{i}")
+        gen1d = Proj2D_X(gen2d, eijbins2[i], eijbins2[i+1], f"GEN_Eij_Bin{i}")
+        unfold1d = Proj2D_X(hUnf2d, eijbins2[i], eijbins2[i+1], f"UNFOLD_Eij_Bin{i}")
         reco1d.SetDirectory(0)
         gen1d.SetDirectory(0)
         unfold1d.SetDirectory(0)
@@ -111,6 +111,8 @@ if __name__ == '__main__':
         reco[i].Write()
         gen[i].Write()
         unfold[i].Write()
+
+    hErr2d.Write()
 
     eec_reco.Write()
     eec_gen.Write()
