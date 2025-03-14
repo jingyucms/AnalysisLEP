@@ -34,31 +34,58 @@ def Proj2D_X(h,ymin,ymax,hname="XXX",Debug=False):
 
     return proj_x
 
+eijbins = [0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.00225, 0.0025, 0.00275, 0.003, 0.0035, 0.004, 0.005, 0.007, 0.01, 0.02, 0.03, 0.04, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 1]
+
+xlow = -3
+xhigh = np.log10(np.pi/2)
+nbins = 100
+
+width = (xhigh-xlow)/nbins
+
+bins=[]
+for i in range(nbins+1):
+    val = pow(10, xlow + i * width)
+    bins += [val]
+
+newbins = [np.pi- b for b in bins]
+newbins = newbins[::-1]
+del newbins[0]
+
+bin_edge = bins+newbins
+
 if __name__ == '__main__':
 
-    filenamein = "response_LEP1MC1994_v4.root"
+    filenamein = "response_LEP1MC1994_v5.root"
+    #datafile = "/eos/user/z/zhangj/ALEPH/EECNtuples/h_LEP1Data1994_recons_aftercut-MERGED.root"
+    #datafile = "/eos/user/z/zhangj/ALEPH/EECNtuples/h_LEP1Data1994P1_recons_aftercut-MERGED.root"
+    datafile = 'data_LEP1MC1994_v5.root'
 
-    filenameout = "unfolded_v4_bin2.root"
+    filenameout = "unfolded_data_v5_bin2.root"
 
-    fin = ROOT.TFile.Open(filenamein)
+    fin = ROOT.TFile.Open(filenamein,'r')
+    fdata = ROOT.TFile.Open(datafile,'r')
     
     response = fin.Get("response2d_eij_r_bin2")
 
-    reco2d = fin.Get("reco2d_eij_r_bin2")
-
+    reco2d = fdata.Get('EEC_2d')
     gen2d = fin.Get("gen2d_eij_r_bin2")
 
     normalization = fin.Get("counter").GetBinContent(1)
+    n = fdata.Get('N').GetBinContent(1)
+
+    reco2d.Scale(normalization/n)
+
+    print(reco2d.Integral(), gen2d.Integral())
 
     RESPONSE=response.Mresponse()
     singular=ROOT.TDecompSVD(RESPONSE)
     #print(singular.GetSig().Print())
     
-    
-    unfold2d = ROOT.RooUnfoldBayes  (response, reco2d, 4)
-    unfold2d.HandleFakes(True)
     #unfold2d = ROOT.RooUnfoldInvert  (response, reco2d)
     #unfold2d =ROOT.RooUnfoldBinByBin  (response, reco2d)
+
+    unfold2d = ROOT.RooUnfoldBayes  (response, reco2d, 4)
+    unfold2d.HandleFakes(True)
 
     hUnf2d = unfold2d.Hunfold()
     hErr2d = unfold2d.Eunfold()
@@ -88,22 +115,10 @@ if __name__ == '__main__':
         reco+=[reco1d]
         gen+=[gen1d]
         unfold+=[unfold1d]
-        #if not i == 0:
-##         bincenter = (eijbins1[i]+eijbins1[i+1])/2
-##         reco1d.Scale(bincenter)
-##         gen1d.Scale(bincenter)
-##         unfold1d.Scale(bincenter)
+
         eec_reco.Add(reco1d)
         eec_gen.Add(gen1d)
         eec_unfold.Add(unfold1d)
-            
-##     eec_reco.Scale(1./normalization)
-##     eec_gen.Scale(1./normalization)
-##     eec_unfold.Scale(1./normalization)
-## 
-##     eec_reco = normalizeByBinWidth(eec_reco)
-##     eec_gen = normalizeByBinWidth(eec_gen)
-##     eec_unfold = normalizeByBinWidth(eec_unfold)
     
     fout = ROOT.TFile(filenameout, 'recreate')
     fout.cd()
@@ -113,6 +128,7 @@ if __name__ == '__main__':
         unfold[i].Write()
 
     hErr2d.Write()
+    gen2d.Write()
 
     eec_reco.Write()
     eec_gen.Write()

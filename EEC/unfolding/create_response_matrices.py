@@ -188,7 +188,6 @@ class MyResponse:
             self._tgen.GetEntry(n)
             self._treco.GetEntry(n)
             
-            
             ## gen event selection
             if self._tgen.passesSTheta < 0.5: continue
 
@@ -200,7 +199,7 @@ class MyResponse:
             pt_gen = np.array(self._tgen.pt)
             theta_gen = np.array(self._tgen.theta)
             hp_gen = np.array(self._tgen.highPurity)
-            sel_gen = (abs(c_gen) > 0.1) & (theta_gen < 2.795) & (theta_gen > 0.348) & (hp_gen > 0.5)
+            sel_gen = (abs(c_gen) > 0.1) & (pt_gen > 0.2) & (theta_gen < 2.795) & (theta_gen > 0.348) & (hp_gen > 0.5)
 
             c_gen = c_gen[sel_gen]
             E_gen = self._tgen.Energy
@@ -262,9 +261,8 @@ class MyResponse:
             matched_gen = matched[:, 1]
     
             miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
-    
             fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
-
+        
             # fill response matrices and histograms
             ## loop over matched
             n_match = 0
@@ -337,7 +335,6 @@ class MyResponse:
                     n_miss+=1
 
                 for j in range(len(matched)):
-                    i_orig = miss[i]
                     j_orig = int(matched[j][1])
                     Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
                     cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
@@ -375,7 +372,6 @@ class MyResponse:
                     n_fake+=1
                     
                 for j in range(len(matched)):
-                    i_orig = fake[i]
                     j_orig = int(matched[j][0])
                     Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
                     cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
