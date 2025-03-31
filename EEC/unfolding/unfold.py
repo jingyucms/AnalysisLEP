@@ -55,28 +55,39 @@ bin_edge = bins+newbins
 
 if __name__ == '__main__':
 
-    filenamein = "response_LEP1MC1994_v5.root"
-    #datafile = "/eos/user/z/zhangj/ALEPH/EECNtuples/h_LEP1Data1994_recons_aftercut-MERGED.root"
-    #datafile = "/eos/user/z/zhangj/ALEPH/EECNtuples/h_LEP1Data1994P1_recons_aftercut-MERGED.root"
-    datafile = 'data_LEP1MC1994_v5.root'
-
-    filenameout = "unfolded_data_v5_bin2.root"
+    #filenamein = "response_LEP1MC1994_v11.root"
+    filenamein = "response_LEP1MC1994_z_v11.root"
+    #filenamein = "smeared_response_Herwig715_v11.root"
+    #filenamein = "smeared_response_Sherpa_v11.root"
+    
+    #datafile = 'data_LEP1MC1994_v6.root'
+    datafile = 'data_LEP1MC1994_z_v6.root'
+    #datafile = 'smeared_response_LEP1MC1994_v11.root'
+    
+    #filenameout = "unfolded_data_v11_bin2.root"
+    filenameout = "unfolded_data_z_v11_bin2.root"
+    #filenameout = "unfolded_LEP1MC1994_v11_bin2.root"
+    #filenameout = "unfolded_smeared_Herwig715_v11_bin2.root"
+    #filenameout = "unfolded_smeared_Sherpa_v11_bin2.root"
 
     fin = ROOT.TFile.Open(filenamein,'r')
     fdata = ROOT.TFile.Open(datafile,'r')
     
     response = fin.Get("response2d_eij_r_bin2")
 
+    #reco2d = fdata.Get('smr2d_eij_r_bin2')
     reco2d = fdata.Get('EEC_2d')
     gen2d = fin.Get("gen2d_eij_r_bin2")
 
     normalization = fin.Get("counter").GetBinContent(1)
     n = fdata.Get('N').GetBinContent(1)
 
-    reco2d.Scale(normalization/n)
+    print(normalization, n)
+    reco2d.Scale(float(normalization)/n)
 
     print(reco2d.Integral(), gen2d.Integral())
 
+    #sys.exit()
     RESPONSE=response.Mresponse()
     singular=ROOT.TDecompSVD(RESPONSE)
     #print(singular.GetSig().Print())

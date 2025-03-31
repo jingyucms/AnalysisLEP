@@ -123,7 +123,7 @@ eijbins1 = np.concatenate([eijbins1, [1]])
 
 eijbins2 = [0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.00225, 0.0025, 0.00275, 0.003, 0.0035, 0.004, 0.005, 0.007, 0.01, 0.02, 0.03, 0.04, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 1]
 
-rbins = calcBinEdge(0.002, np.pi/2, 100)
+rbins = calcBinEdge(0.00001, 0.5, 100)
 
 eijbins1 = np.array(eijbins1)
 eijbins2 = np.array(eijbins2)
@@ -159,7 +159,7 @@ class MyResponse:
     def bookHistograms(self):
 
         hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 2, 0, 2)
+        self._hists[hname] = ROOT.TH1F(hname, hname, 1, 0, 1)
 
         # EEC hists
         hname = 'reco2d_eij_r_bin1'
@@ -254,18 +254,16 @@ class MyResponse:
         for n in range(nevt):
             self._evt_counter += 1
 
+            self._hists['counter'].Fill(0.5)
+
             self._tgen.GetEntry(n)
             self._treco.GetEntry(n)
-
-            self._hists['counter'].Fill(0.5)
             
             ## gen event selection
             if self._tgen.passesSTheta < 0.5: continue
 
             ## reco event selection
             if self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5: continue
-
-            self._hists['counter'].Fill(1.5)
 
             ## gen track selection
             c_gen = np.array(self._tgen.charge)
@@ -375,12 +373,14 @@ class MyResponse:
                     j_orig_reco = int(matched[j][0])
                     j_orig_gen = int(matched[j][1])
                     
-                    Eij_reco = e_reco[i_orig_reco]*e_reco[j_orig_reco]/E_reco**2
-                    Eij_gen = e_gen[i_orig_gen]*e_gen[j_orig_gen]/E_gen**2
+                    Eij_reco = E_ij(px_reco[i_orig_reco], py_reco[i_orig_reco], pz_reco[i_orig_reco], m_reco[i_orig_reco], px_reco[j_orig_reco], py_reco[j_orig_reco], pz_reco[j_orig_reco], m_reco[j_orig_reco])/E_reco**2
+                    Eij_gen = E_ij(px_gen[i_orig_gen], py_gen[i_orig_gen], pz_gen[i_orig_gen], m_gen[i_orig_gen], px_gen[j_orig_gen], py_gen[j_orig_gen], pz_gen[j_orig_gen], m_gen[j_orig_gen])/E_gen**2
                     cr_reco = cos_theta(px_reco[i_orig_reco], py_reco[i_orig_reco], pz_reco[i_orig_reco], px_reco[j_orig_reco], py_reco[j_orig_reco], pz_reco[j_orig_reco])
                     cr_gen = cos_theta(px_gen[i_orig_gen], py_gen[i_orig_gen], pz_gen[i_orig_gen], px_gen[j_orig_gen], py_gen[j_orig_gen], pz_gen[j_orig_gen])
-                    r_reco = theta(cr_reco)
-                    r_gen = theta(cr_gen)
+                    #r_reco = theta(cr_reco)
+                    #r_gen = theta(cr_gen)
+                    r_reco = (1-cr_reco)/2.
+                    r_gen = (1-cr_gen)/2.
                     self._hists['resp_eij_bin1'].Fill(Eij_reco, Eij_gen)
                     self._hists['resp_eij_bin2'].Fill(Eij_reco, Eij_gen)
                     self._hists['resp_r'].Fill(r_reco, r_gen)
@@ -419,7 +419,7 @@ class MyResponse:
                     j_orig = miss[j]
                     Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
                     cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
-                    r = theta(cr)
+                    r = (1-cr)/2.
                     self._hists['miss_r'].Fill(r, Eij)
                     self._hists['miss_eij_bin1'].Fill(Eij)
                     self._hists['gen2d_eij_r_bin1'].Fill(r, Eij)
@@ -434,7 +434,7 @@ class MyResponse:
                     j_orig = int(matched[j][1])
                     Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
                     cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
-                    r = theta(cr)
+                    r = (1-cr)/2.
                     self._hists['miss_r'].Fill(r, Eij)
                     self._hists['gen1d_eec'].Fill(r, Eij)
                     self._hists['miss_eij_bin1'].Fill(Eij)
@@ -456,7 +456,7 @@ class MyResponse:
                     j_orig = fake[j]
                     Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
                     cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
-                    r = theta(cr)
+                    r = (1-cr)/2.
                     self._hists['fake_r'].Fill(r, Eij)
                     self._hists['fake_eij_bin1'].Fill(Eij)
                     self._hists['reco2d_eij_r_bin1'].Fill(r, Eij)
@@ -471,7 +471,7 @@ class MyResponse:
                     j_orig = int(matched[j][0])
                     Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
                     cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
-                    r = theta(cr)
+                    r = (1-cr)/2.
                     self._hists['fake_r'].Fill(r, Eij)
                     self._hists['fake_eij_bin1'].Fill(Eij)
                     self._hists['reco2d_eij_r_bin1'].Fill(r, Eij)

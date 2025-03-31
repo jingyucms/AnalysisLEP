@@ -10,5 +10,3 @@ echo "  for 2 (input filename): $2"
 echo "  for 2 (input filename): $3"
 
 python3 ${1} ${2} ${3}
-
-
