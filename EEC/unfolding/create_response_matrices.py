@@ -338,27 +338,27 @@ class MyResponse:
                         dists[i, j] = matching_metric_aleph(itheta, iphi, ei, jtheta, jphi, ej)
         
             dists[dists < 0] = 99999
-        
-#            #matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1]) if dists[i, j] < matching_r]
-#
-#            matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1])]
-#        
-#            matched = np.array(sorted(matched, key=lambda x: x[2]))
-#    
-#            matched = self.oneOnOneMatch(matched, 0)
-#            matched = self.oneOnOneMatch(matched, 1)
-#    
-#            matched_reco = matched[:, 0]
-#            matched_gen = matched[:, 1]
 
-            matched_reco, matched_gen = linear_sum_assignment(dists)
-            matched = np.column_stack((matched_reco, matched_gen))
+            if doAngular:
+                matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1]) if dists[i, j] < matching_r]
+
+                #matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1])]
+        
+                matched = np.array(sorted(matched, key=lambda x: x[2]))
     
-            miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
-            fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
+                matched = self.oneOnOneMatch(matched, 0)
+                matched = self.oneOnOneMatch(matched, 1)
+    
+                matched_reco = matched[:, 0]
+                matched_gen = matched[:, 1]
 
-            #print(len(matched), len(miss), len(fake))
-        
+            else:
+                matched_reco, matched_gen = linear_sum_assignment(dists)
+                matched = np.column_stack((matched_reco, matched_gen))
+    
+                miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
+                fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
+
             # fill response matrices and histograms
             ## loop over matched
             n_match = 0
