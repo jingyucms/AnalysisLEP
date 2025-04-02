@@ -6,12 +6,135 @@ import argparse
 import math
 from scipy.optimize import linear_sum_assignment
 import json
+import time
 
 from ROOT import RooUnfoldResponse
 from ROOT import RooUnfold
 from ROOT import RooUnfoldBayes
 
 sys.path.append(os.path.abspath("/afs/cern.ch/user/z/zhangj/private/ALEPH/CMSSW_14_1_5/src/AnalysisLEP/EEC/python"))
+
+def calculate_sphericity(px, py, pz):
+    """
+    Calculate the sphericity matrix and perform eigen-decomposition to obtain
+    eigenvalues and eigenvectors for the standard (nonlinear) sphericity (r=2).
+    
+    In this version, we assume that all particles are used (i.e. no particle flag filtering),
+    and the weight factor is unity (since (p2)^(0) = 1).
+    
+    Additionally, the function returns the cosine of the polar angle (theta) for the
+    first eigenvector. Since eigenvectors are normalized, the cosine of theta is simply
+    the z-component of the eigenvector.
+    
+    Parameters:
+      px, py, pz : iterables of floats
+          The momentum components for each particle.
+    
+    Returns:
+      A dictionary containing:
+        "eigenvalues"  : NumPy array of eigenvalues (sorted in ascending order).
+        "eigenvectors" : NumPy array of the corresponding eigenvectors as columns.
+        "cos_theta_v1" : Cosine of the polar angle for the first eigenvector.
+        "type"         : A string, "nonlinear" (since r is assumed to be 2).
+    """
+    def p2(px_val, py_val, pz_val):
+        return px_val * px_val + py_val * py_val + pz_val * pz_val
+
+    n = len(px)
+    # Initialize a 3x3 matrix for the sphericity calculation.
+    m = np.zeros((3, 3), dtype=float)
+    norm = 0.0
+
+    # Loop over each particle.
+    for i in range(n):
+        p2_val = p2(px[i], py[i], pz[i])
+        factor = 1.0  # For r = 2, the exponent is (2-2)/2 = 0, so factor is 1.
+        m[0, 0] += px[i] * px[i] * factor
+        m[1, 1] += py[i] * py[i] * factor
+        m[2, 2] += pz[i] * pz[i] * factor
+        m[1, 0] += px[i] * py[i] * factor
+        m[2, 0] += px[i] * pz[i] * factor
+        m[1, 2] += py[i] * pz[i] * factor
+        # Accumulate norm: for r = 2, it is the sum of p2 values.
+        norm += p2_val
+
+    # Normalize the matrix.
+    if (norm == 0): print(px, py, pz)
+    m = m / norm
+
+    # Symmetrize the matrix explicitly.
+    m[0, 1] = m[1, 0]
+    m[0, 2] = m[2, 0]
+    m[2, 1] = m[1, 2]
+
+    # Compute the eigenvalues and eigenvectors.
+    # np.linalg.eigh returns eigenvalues in ascending order.
+    eigenvalues, eigenvectors = np.linalg.eigh(m)
+
+    # The first eigenvector is taken as the first column in eigenvectors.
+    # Since the eigenvectors are normalized, the cosine theta of the first eigenvector
+    # is simply its z-component (the third component).
+    cos_theta_v1 = eigenvectors[2, 2]
+
+    return {
+        "eigenvalues": eigenvalues,
+        "eigenvectors": eigenvectors,  # Each column corresponds to an eigenvector.
+        "cos_theta_v1": cos_theta_v1,
+        "type": "nonlinear"
+    }
+
+def double_sided_crystal_ball(x, par):
+    """
+    Double-Sided Crystal Ball Function.
+    
+    Parameters:
+      x      : Array-like, expected to be of length 1 (e.g. x[0]).
+      par    : List or array of parameters.
+               par[0] = N (normalization)
+               par[1] = mu (mean)
+               par[2] = sigma (width)
+               par[3] = alpha_l (left threshold, positive)
+               par[4] = n_l (left tail exponent)
+               par[6] = alpha_r (right threshold, positive)
+               par[7] = n_r (right tail exponent)
+    
+    Returns:
+      The function evaluated at x[0] (a float).
+    """
+    
+    # Unpack parameters
+    N     = par[0]
+    mu    = par[1]
+    sigma = par[2]
+    alpha_l = par[3]
+    n_l     = par[4]
+    alpha_r = par[6]
+    n_r     = par[7]
+    
+    # Use only the first element of x
+    x_val = x[0]
+    t = (x_val - mu) / sigma
+    
+    # Evaluate based on region
+    if t < -alpha_l:
+        A_l = (n_l / abs(alpha_l))**n_l * math.exp(-0.5 * alpha_l**2)
+        B_l = n_l / abs(alpha_l) - abs(alpha_l)
+        result = N * A_l * (B_l - t)**(-n_l)
+    elif t > alpha_r:
+        A_r = (n_r / abs(alpha_r))**n_r * math.exp(-0.5 * alpha_r**2)
+        B_r = n_r / abs(alpha_r) - abs(alpha_r)
+        result = N * A_r * (B_r + t)**(-n_r)
+    else:
+        result = N * math.exp(-0.5 * t**2)
+    
+    return float(result)
+
+def gaussian(x, par):
+    
+    mu = par[0]
+    sigma = par[1]
+    norm = 1.0 / (sigma * math.sqrt(2 * math.pi))
+    return norm * math.exp(-0.5 * ((x[0] - mu) / sigma)**2)
 
 def cos_theta(p1x, p1y, p1z, p2x, p2y, p2z):
     num = p1x*p2x + p1y*p2y + p1z*p2z
@@ -111,13 +234,6 @@ def ReadFilesFromList(infile):
 
     return filelist
 
-def smr_pdf(x, par):
-    
-    mu = par[0]
-    sigma = par[1]
-    norm = 1.0 / (sigma * math.sqrt(2 * math.pi))
-    return norm * math.exp(-0.5 * ((x[0] - mu) / sigma)**2)
-
 base = 2
 start = math.log(0.0001, base)  # Log10 of the lower bound
 end = math.log(0.3, base)       # Log10 of the upper bound
@@ -167,7 +283,7 @@ class MyResponseSMR:
     def bookHistograms(self):
 
         hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 1, 0, 1)
+        self._hists[hname] = ROOT.TH1F(hname, hname, 2, 0, 2)
 
         # EEC hists
         hname = 'smr2d_eij_r_bin1'
@@ -255,25 +371,34 @@ class MyResponseSMR:
             theta_gen = theta_gen[sel_gen]
             phi_gen = np.array(self._tgen.phi)[sel_gen]
 
-            nTrks = len(px_gen)
+            nTrks_gen = len(px_gen)
 
             e_gen = np.sqrt(px_gen**2 + py_gen**2 + pz_gen**2 + m_gen**2)
 
-            smrbins = [0, 2, 4, 7, 10, 15, 20, 30, 40, 200]
+            if np.sum(e_gen) > 200: continue
 
-            e_reco = np.zeros(nTrks, 'd')
+            smrbins = [0, 2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 200]
+
+            e_reco = np.zeros(nTrks_gen, 'd')
 
             for i, e in enumerate(e_gen):
                 ibin = self.findBin(smrbins, e)
+                #print(ibin, self._pdfs[ibin])
                 factor = self._pdfs[ibin].GetRandom()
                 e_reco[i] = e*factor
+                #if e_reco[i] < 2.1 and e_reco[i] > 2.0: print(factor, e)
+
+            #print(e_gen)
+            #print(e_reco)
 
 
-            factor_theta = np.random.normal(loc=1.0, scale=0.001, size=nTrks)
-            factor_phi = np.random.normal(loc=1.0, scale=0.001, size=nTrks)
+            factor_theta = np.random.normal(loc=1.0, scale=0.001, size=nTrks_gen)
+            factor_phi = np.random.normal(loc=1.0, scale=0.001, size=nTrks_gen)
 
             theta_reco = theta_gen * factor_theta
             phi_reco = phi_gen * factor_phi
+            #theta_reco = theta_gen
+            #phi_reco = phi_gen
 
             m_reco = m_gen
 
@@ -283,11 +408,31 @@ class MyResponseSMR:
             py_reco = p_reco * np.sin(theta_reco) * np.sin(phi_reco)
             pz_reco = p_reco * np.cos(theta_reco)
 
-            dists = np.full((nTrks, nTrks), -1, 'd')
+            pt_reco = p_reco * np.sin(theta_reco)
+
+            sel = pt_reco > 0.2
+
+            px_reco = px_reco[sel]
+            py_reco = py_reco[sel]
+            pz_reco = pz_reco[sel]
+            p_reco = p_reco[sel]
+            m_reco = m_reco[sel]
+            theta_reco = theta_reco[sel]
+            phi_reco = phi_reco[sel]
+
+            nTrks_reco = len(px_reco)
+            if nTrks_reco == 0: continue
+            if np.sum(e_reco) > 200: continue
+            sphericity_reco = calculate_sphericity(px_reco, py_reco, pz_reco)
+            if abs(sphericity_reco["cos_theta_v1"])>0.82: continue
+
+            self._hists['counter'].Fill(1.5)
+
+            dists = np.full((nTrks_reco, nTrks_gen), -1, 'd')
 
             # matching
-            for i in range(nTrks):
-                for j in range(nTrks):
+            for i in range(nTrks_reco):
+                for j in range(nTrks_gen):
                     pxi = px_reco[i]
                     pyi = py_reco[i]
                     pzi = pz_reco[i]
@@ -385,14 +530,24 @@ class MyResponseSMR:
             params = json.load(file)
              
         for i, param in enumerate(params):
-            func = ROOT.TF1(f"smr_e{i}", smr_pdf, 0.2, 1.8, 2)
-            func.SetParameters(param['mean'], param['sigma'])
+            func = ROOT.TF1(f"smr_e{i}", gaussian, 0.9, 1.1, 2)
+            func.SetParameters(*params)
+            self._pdfs.append(func)
+
+    def loadSMRParamsCB2(self, fparams):
+        with open(fparams, "r") as file:
+            params = json.load(file)
+             
+        for i, param in enumerate(params):
+            func = ROOT.TF1(f"smr_e{i}", double_sided_crystal_ball, 0.9, 1.1, 7)
+            func.SetParameters(*param['params'])
+            #print(param['params'])
             self._pdfs.append(func)
 
 if __name__ == "__main__":
 
 
-    filename = '/eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPHMC/LEP1MC1994_recons_aftercut-001.root'
+    filename = '/eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPHMC/LEP1MC1994_recons_aftercut-032.root'
     filenameout = "smeared_response.root"
 
     parser = argparse.ArgumentParser()
@@ -400,7 +555,10 @@ if __name__ == "__main__":
     parser.add_argument("outfile", nargs='?', default=filenameout, help="name of input files")
     args = parser.parse_args()
 
-    tgen = 't'
+    s=int(time.time())
+    ROOT.gRandom.SetSeed(s)
+    
+    tgen = 'tgen'
 
     t_gen = ROOT.TChain(tgen)
 
@@ -418,7 +576,8 @@ if __name__ == "__main__":
     fnameout = args.outfile
 
     response = MyResponseSMR(t_gen)
-    response.loadSMRParams("fit_results.json")
+    #response.loadSMRParams("fit_results.json")
+    response.loadSMRParamsCB2("fit_results_cb2.json")
     response.bookHistograms()
     response.bookResponseMatrices()
     response.loop()

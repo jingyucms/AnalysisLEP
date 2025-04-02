@@ -12,6 +12,13 @@ from ROOT import RooUnfoldBayes
 
 sys.path.append(os.path.abspath("/afs/cern.ch/user/z/zhangj/private/ALEPH/CMSSW_14_1_5/src/AnalysisLEP/EEC/python"))
 
+def calcAngle(n1, n2):
+    cos_theta = np.dot(n1, n2) / (np.linalg.norm(n1) * np.linalg.norm(n2))
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)  
+    
+    theta = np.arccos(cos_theta)
+    return theta
+
 def cos_theta(p1x, p1y, p1z, p2x, p2y, p2z):
     num = p1x*p2x + p1y*p2y + p1z*p2z
     den = math.sqrt(p1x**2+p1y**2+p1z**2)*math.sqrt(p2x**2+p2y**2+p2z**2)
@@ -133,7 +140,6 @@ doAngular = False
 
 if doAngular:
     matching_r = 0.05
-    #matching_r = 3
 else:
     matching_r = 10000
 
@@ -165,10 +171,16 @@ class MyResponse:
         hname = 'reco2d_eij_r_bin1'
         self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
+        hname = 'reco2d_eij_r_bin1_matchonly'
+        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+
         hname = 'gen2d_eij_r_bin1'
         self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'reco2d_eij_r_bin2'
+        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+
+        hname = 'reco2d_eij_r_bin2_matchonly'
         self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'gen2d_eij_r_bin2'
@@ -265,8 +277,6 @@ class MyResponse:
             ## reco event selection
             if self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5: continue
 
-            self._hists['counter'].Fill(1.5)
-
             ## gen track selection
             c_gen = np.array(self._tgen.charge)
             pt_gen = np.array(self._tgen.pt)
@@ -285,6 +295,7 @@ class MyResponse:
             theta_gen = theta_gen[sel_gen]
             phi_gen = np.array(self._tgen.phi)[sel_gen]
 
+            p3_gen = np.stack((px_gen, py_gen, pz_gen), axis=1)
             e_gen = np.sqrt(px_gen**2 + py_gen**2 + pz_gen**2 + m_gen**2)
 
             ## reco track selection     
@@ -306,52 +317,55 @@ class MyResponse:
             phi_reco = np.array(self._treco.phi)[sel_reco]
 
             e_reco = np.sqrt(px_reco**2 + py_reco**2 + pz_reco**2 + m_reco**2)
+            p3_reco = np.stack((px_reco, py_reco, pz_reco), axis=1)
+
+            if np.sum(e_reco) > 200 or np.sum(e_gen) > 200: continue
+            self._hists['counter'].Fill(1.5)
             
             nTrks_reco = len(px_reco)
             nTrks_gen = len(px_gen)
             
-            dists = np.full((nTrks_reco, nTrks_gen), -1, 'd')
-
-            # matching
-            for i in range(nTrks_reco):
-                for j in range(nTrks_gen):
-                    pxi = px_reco[i]
-                    pyi = py_reco[i]
-                    pzi = pz_reco[i]
-                    mi = m_reco[i]
-                    itheta = theta_reco[i]
-                    iphi = phi_reco[i]
-        
-                    pxj = px_gen[j]
-                    pyj = py_gen[j]
-                    pzj = pz_gen[j]
-                    mj = m_gen[j]
-                    jtheta = theta_gen[j]
-                    jphi = phi_gen[j]
-
-                    if doAngular:
-                        cos_t = cos_theta(pxi, pyi, pzi, pxj, pyj, pzj)
-                        dists[i, j] = c_reco[i]*c_gen[j]*theta(cos_t)
-                    else:
-                        ei = e_reco[i]
-                        ej = e_gen[j]
-                        dists[i, j] = matching_metric_aleph(itheta, iphi, ei, jtheta, jphi, ej)
+            # --- Vectorized matching cost matrix ---
+            if doAngular:
+                norm_reco = np.sqrt(px_reco**2 + py_reco**2 + pz_reco**2)
+                norm_gen = np.sqrt(px_gen**2 + py_gen**2 + pz_gen**2)
+                dot = np.outer(px_reco, px_gen) + np.outer(py_reco, py_gen) + np.outer(pz_reco, pz_gen)
+                cos_t = dot / (np.outer(norm_reco, norm_gen) + 1e-12)
+                cos_t = np.clip(cos_t, -1.0, 1.0)
+                r_vals = np.arccos(cos_t)
+                dists = (c_reco[:, None] * c_gen[None, :]) * r_vals
+            else:
+                dtheta = np.abs(theta_reco[:, None] - theta_gen[None, :])
+                dphi = np.abs(phi_reco[:, None] - phi_gen[None, :])
+                de = np.abs(e_reco[:, None] - e_gen[None, :])
+                mean_e = 0.5 * (e_reco[:, None] + e_gen[None, :])
+                sigma_delta = 25e-6 + 95e-6 / (mean_e + 1e-12)
+                inner_radius = 6e-2
+                sigma_theta = (sigma_delta / inner_radius) * 2.8
+                sigma_phi = (sigma_delta / inner_radius) * 2.3
+                sigma_e = np.sqrt((6e-4 * mean_e)**2 + 0.005**2) * mean_e
+                chi_theta = dtheta / (sigma_theta + 1e-12)
+                chi_phi = dphi / (sigma_phi + 1e-12)
+                chi_e = de / (sigma_e + 1e-12)
+                dists = chi_theta**2 + chi_phi**2 + chi_e**2
         
             dists[dists < 0] = 99999
 
             if doAngular:
-                matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1]) if dists[i, j] < matching_r]
-
-                #matched = [(i, j, dists[i, j]) for i in range(dists.shape[0]) for j in range(dists.shape[1])]
-        
-                matched = np.array(sorted(matched, key=lambda x: x[2]))
-    
-                matched = self.oneOnOneMatch(matched, 0)
-                matched = self.oneOnOneMatch(matched, 1)
-    
-                matched_reco = matched[:, 0]
-                matched_gen = matched[:, 1]
-
+                # For angular matching, select pairs having cost below threshold
+                matched_list = np.array([
+                    (i, j, dists[i, j])
+                    for i in range(dists.shape[0])
+                    for j in range(dists.shape[1])
+                    if dists[i, j] < matching_r
+                ])
+                if matched_list.size == 0:
+                    matched = np.empty((0,2), dtype=int)
+                else:
+                    matched_list = matched_list[matched_list[:,2].argsort()]
+                    matched = self.oneOnOneMatch(matched_list, 0)
+                    matched = self.oneOnOneMatch(matched, 1)
+                    matched = matched[:,:2]
             else:
                 matched_reco, matched_gen = linear_sum_assignment(dists)
                 matched = np.column_stack((matched_reco, matched_gen))
@@ -377,10 +391,10 @@ class MyResponse:
                     
                     Eij_reco = e_reco[i_orig_reco]*e_reco[j_orig_reco]/E_reco**2
                     Eij_gen = e_gen[i_orig_gen]*e_gen[j_orig_gen]/E_gen**2
-                    cr_reco = cos_theta(px_reco[i_orig_reco], py_reco[i_orig_reco], pz_reco[i_orig_reco], px_reco[j_orig_reco], py_reco[j_orig_reco], pz_reco[j_orig_reco])
-                    cr_gen = cos_theta(px_gen[i_orig_gen], py_gen[i_orig_gen], pz_gen[i_orig_gen], px_gen[j_orig_gen], py_gen[j_orig_gen], pz_gen[j_orig_gen])
-                    r_reco = theta(cr_reco)
-                    r_gen = theta(cr_gen)
+
+                    r_reco = calcAngle(p3_reco[i_orig_reco], p3_reco[j_orig_reco])
+                    r_gen = calcAngle(p3_gen[i_orig_gen], p3_gen[j_orig_gen])
+        
                     self._hists['resp_eij_bin1'].Fill(Eij_reco, Eij_gen)
                     self._hists['resp_eij_bin2'].Fill(Eij_reco, Eij_gen)
                     self._hists['resp_r'].Fill(r_reco, r_gen)
@@ -396,9 +410,11 @@ class MyResponse:
                     self._hists[f'gen_eij_r_bin2_{i_plot_gen_bin2}'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco2d_eij_r_bin1'].Fill(r_reco, Eij_reco)
+                    self._hists['reco2d_eij_r_bin1_matchonly'].Fill(r_reco, Eij_reco)
                     self._hists['gen2d_eij_r_bin1'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco2d_eij_r_bin2'].Fill(r_reco, Eij_reco)
+                    self._hists['reco2d_eij_r_bin2_matchonly'].Fill(r_reco, Eij_reco)
                     self._hists['gen2d_eij_r_bin2'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco1d_eec'].Fill(r_reco, Eij_reco)
@@ -417,9 +433,8 @@ class MyResponse:
                 for j in range(len(miss)):
                     if i>=j: continue
                     j_orig = miss[j]
-                    Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
-                    cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
-                    r = theta(cr)
+                    Eij = e_gen[i_orig]*e_gen[j_orig]/E_gen**2
+                    r = calcAngle(p3_gen[i_orig], p3_gen[j_orig])
                     self._hists['miss_r'].Fill(r, Eij)
                     self._hists['miss_eij_bin1'].Fill(Eij)
                     self._hists['gen2d_eij_r_bin1'].Fill(r, Eij)
@@ -432,9 +447,8 @@ class MyResponse:
 
                 for j in range(len(matched)):
                     j_orig = int(matched[j][1])
-                    Eij = E_ij(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], m_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig], m_gen[j_orig])/E_gen**2
-                    cr = cos_theta(px_gen[i_orig], py_gen[i_orig], pz_gen[i_orig], px_gen[j_orig], py_gen[j_orig], pz_gen[j_orig])
-                    r = theta(cr)
+                    Eij = e_gen[i_orig]*e_gen[j_orig]/E_gen**2
+                    r = calcAngle(p3_gen[i_orig], p3_gen[j_orig])
                     self._hists['miss_r'].Fill(r, Eij)
                     self._hists['gen1d_eec'].Fill(r, Eij)
                     self._hists['miss_eij_bin1'].Fill(Eij)
@@ -454,9 +468,8 @@ class MyResponse:
                 for j in range(len(fake)):
                     if i>=j: continue
                     j_orig = fake[j]
-                    Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
-                    cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
-                    r = theta(cr)
+                    Eij = e_reco[i_orig]*e_reco[j_orig]/E_reco**2
+                    r = calcAngle(p3_reco[i_orig], p3_reco[j_orig])
                     self._hists['fake_r'].Fill(r, Eij)
                     self._hists['fake_eij_bin1'].Fill(Eij)
                     self._hists['reco2d_eij_r_bin1'].Fill(r, Eij)
@@ -469,9 +482,8 @@ class MyResponse:
                     
                 for j in range(len(matched)):
                     j_orig = int(matched[j][0])
-                    Eij = E_ij(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], m_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig], m_reco[j_orig])/E_reco**2
-                    cr = cos_theta(px_reco[i_orig], py_reco[i_orig], pz_reco[i_orig], px_reco[j_orig], py_reco[j_orig], pz_reco[j_orig])
-                    r = theta(cr)
+                    Eij = e_reco[i_orig]*e_reco[j_orig]/E_reco**2
+                    r = calcAngle(p3_reco[i_orig], p3_reco[j_orig])
                     self._hists['fake_r'].Fill(r, Eij)
                     self._hists['fake_eij_bin1'].Fill(Eij)
                     self._hists['reco2d_eij_r_bin1'].Fill(r, Eij)

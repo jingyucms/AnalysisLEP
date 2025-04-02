@@ -159,7 +159,7 @@ class MyResponse:
     def bookHistograms(self):
 
         hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 1, 0, 1)
+        self._hists[hname] = ROOT.TH1F(hname, hname, 2, 0, 2)
 
         # EEC hists
         hname = 'reco2d_eij_r_bin1'
@@ -304,6 +304,9 @@ class MyResponse:
             phi_reco = np.array(self._treco.phi)[sel_reco]
 
             e_reco = np.sqrt(px_reco**2 + py_reco**2 + pz_reco**2 + m_reco**2)
+            if np.sum(e_reco) > 200 or np.sum(e_gen) > 200: continue
+
+            self._hists['counter'].Fill(1.5)
             
             nTrks_reco = len(px_reco)
             nTrks_gen = len(px_gen)
