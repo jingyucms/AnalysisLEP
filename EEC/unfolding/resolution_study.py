@@ -126,7 +126,11 @@ eijbins1 = np.array(eijbins1)
 eijbins2 = np.array(eijbins2)
 rbins = np.array(rbins)
 
-doAngular = False
+doAngular = True
+if doAngular:
+    matching_r = 0.05
+else:
+    matching_r = 10000
 
 class MyResolution:
 
@@ -215,42 +219,67 @@ class MyResolution:
             nTrks_reco = len(px_reco)
             nTrks_gen = len(px_gen)
             
-            dists = np.full((nTrks_reco, nTrks_gen), -1, 'd')
+            #if np.sum(e_gen) > 200: continue
 
-            # matching
-            for i in range(nTrks_reco):
-                for j in range(nTrks_gen):
-                    pxi = px_reco[i]
-                    pyi = py_reco[i]
-                    pzi = pz_reco[i]
-                    mi = m_reco[i]
-                    itheta = theta_reco[i]
-                    iphi = phi_reco[i]
-        
-                    pxj = px_gen[j]
-                    pyj = py_gen[j]
-                    pzj = pz_gen[j]
-                    mj = m_gen[j]
-                    jtheta = theta_gen[j]
-                    jphi = phi_gen[j]
+            p3_gen = np.stack((px_gen, py_gen, pz_gen), axis=1)
+            p3_reco = np.stack((px_reco, py_reco, pz_reco), axis=1)
 
-                    ei = E(pxi, pyi, pzi, mi)
-                    ej = E(pxj, pyj, pzj, mj)
-                    dists[i, j] = matching_metric_aleph(itheta, iphi, ei, jtheta, jphi, ej)
+            # --- Vectorized matching cost matrix ---
+            if doAngular:
+                norm_reco = np.sqrt(px_reco**2 + py_reco**2 + pz_reco**2)
+                norm_gen = np.sqrt(px_gen**2 + py_gen**2 + pz_gen**2)
+                dot = np.outer(px_reco, px_gen) + np.outer(py_reco, py_gen) + np.outer(pz_reco, pz_gen)
+                cos_t = dot / (np.outer(norm_reco, norm_gen) + 1e-12)
+                cos_t = np.clip(cos_t, -1.0, 1.0)
+                r_vals = np.arccos(cos_t)
+                dists = (c_reco[:, None] * c_gen[None, :]) * r_vals
+            else:
+                dtheta = np.abs(theta_reco[:, None] - theta_gen[None, :])
+                dphi = np.abs(phi_reco[:, None] - phi_gen[None, :])
+                de = np.abs(e_reco[:, None] - e_gen[None, :])
+                mean_e = 0.5 * (e_reco[:, None] + e_gen[None, :])
+                sigma_delta = 25e-6 + 95e-6 / (mean_e + 1e-12)
+                inner_radius = 6e-2
+                sigma_theta = (sigma_delta / inner_radius) * 2.8
+                sigma_phi = (sigma_delta / inner_radius) * 2.3
+                sigma_e = np.sqrt((6e-4 * mean_e)**2 + 0.005**2) * mean_e
+                chi_theta = dtheta / (sigma_theta + 1e-12)
+                chi_phi = dphi / (sigma_phi + 1e-12)
+                chi_e = de / (sigma_e + 1e-12)
+                dists = chi_theta**2 + chi_phi**2 + chi_e**2
         
             dists[dists < 0] = 99999
 
-            matched_reco, matched_gen = linear_sum_assignment(dists)
-            matched = np.column_stack((matched_reco, matched_gen))
+            if doAngular:
+                # For angular matching, select pairs having cost below threshold
+                matched = np.array([
+                    (i, j, dists[i, j])
+                    for i in range(dists.shape[0])
+                    for j in range(dists.shape[1])
+                    if dists[i, j] < matching_r
+                ])
+
+                matched = np.array(sorted(matched, key=lambda x: x[2]))
+    
+                matched = self.oneOnOneMatch(matched, 0)
+                matched = self.oneOnOneMatch(matched, 1)
+    
+                matched_reco = matched[:, 0]
+                matched_gen = matched[:, 1]
+                
+            else:
+                matched_reco, matched_gen = linear_sum_assignment(dists)
+                matched = np.column_stack((matched_reco, matched_gen))
     
             miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
             fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
-        
+
             # fill response matrices and histograms
             ## loop over matched
             n_match = 0
             for pair in matched:
-                v1, v2 = pair
+                #print(matched)
+                v1, v2 = int(pair[0]), int(pair[1])
                 
                 pxi = px_reco[v1]
                 pyi = py_reco[v1]
@@ -269,8 +298,8 @@ class MyResolution:
                 ei = E(pxi, pyi, pzi, mi)
                 ej = E(pxj, pyj, pzj, mj)
                 
-                self._respE[0] = ei / ej
-                self._genE[0] = ej
+                self._respE[0] = pt_reco[v1] / pt_gen[v2]
+                self._genE[0] = pt_gen[v2]
 
                 self._respT[0] = itheta / jtheta
                 self._genT[0] = jtheta

@@ -159,83 +159,83 @@ class MyResponse:
     def bookHistograms(self):
 
         hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 2, 0, 2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, 2, 0, 2)
 
         # EEC hists
         hname = 'reco2d_eij_r_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'gen2d_eij_r_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'reco2d_eij_r_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'gen2d_eij_r_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'reco1d_eec'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         hname = 'gen1d_eec'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
         
         for i in range(len(eijbins1)-1):
             hname = f'reco_eij_r_bin1_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         for i in range(len(eijbins1)-1):
             hname = f'gen_eij_r_bin1_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         for i in range(len(eijbins2)-1):
             hname = f'reco_eij_r_bin2_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         for i in range(len(eijbins2)-1):
             hname = f'gen_eij_r_bin2_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         hname = 'resp_r'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(rbins)-1, rbins)
         
         hname = 'resp_eij_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(eijbins1)-1, eijbins1, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(eijbins1)-1, eijbins1, len(eijbins1)-1, eijbins1)
 
         hname = 'resp_eij_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(eijbins2)-1, eijbins2, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(eijbins2)-1, eijbins2, len(eijbins2)-1, eijbins2)
     
         hname = 'fake_r'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
         
         hname = 'fake_eij_bin1'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins1)-1, eijbins1)
 
         hname = 'fake_eij_bin2'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins2)-1, eijbins2)
     
         hname = 'miss_r'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         hname = 'miss_eij_bin1'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins1)-1, eijbins1)
         
         hname = 'miss_eij_bin2'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins2)-1, eijbins2)
 
         # pt eta phi hists
         for c in ['match', 'fake', 'miss']:
             hname = f'reco_{c}_pt'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 450, 0, 45)
 
             hname = f'gen_{c}_pt'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 450, 0, 45)
 
             hname = f'reco_{c}_theta'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 30, 0.1, 3.1)
 
             hname = f'gen_{c}_theta'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 30, 0.1, 3.1)
 
 
     def bookResponseMatrices(self):

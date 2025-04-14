@@ -136,7 +136,7 @@ eijbins1 = np.array(eijbins1)
 eijbins2 = np.array(eijbins2)
 rbins = np.array(rbins)
 
-doAngular = False
+doAngular = True
 
 if doAngular:
     matching_r = 0.05
@@ -165,89 +165,95 @@ class MyResponse:
     def bookHistograms(self):
 
         hname = 'counter'
-        self._hists[hname] = ROOT.TH1F(hname, hname, 2, 0, 2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, 2, 0, 2)
 
         # EEC hists
         hname = 'reco2d_eij_r_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'reco2d_eij_r_bin1_matchonly'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'gen2d_eij_r_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
+        
+        hname = 'gen2d_eij_r_bin1_matchonly'
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins1)-1, eijbins1)
 
         hname = 'reco2d_eij_r_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'reco2d_eij_r_bin2_matchonly'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'gen2d_eij_r_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
+
+        hname = 'gen2d_eij_r_bin2_matchonly'
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(eijbins2)-1, eijbins2)
 
         hname = 'reco1d_eec'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         hname = 'gen1d_eec'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
         
         for i in range(len(eijbins1)-1):
             hname = f'reco_eij_r_bin1_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         for i in range(len(eijbins1)-1):
             hname = f'gen_eij_r_bin1_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         for i in range(len(eijbins2)-1):
             hname = f'reco_eij_r_bin2_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         for i in range(len(eijbins2)-1):
             hname = f'gen_eij_r_bin2_{i}'
-            self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+            self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
     
         hname = 'resp_r'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(rbins)-1, rbins, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(rbins)-1, rbins, len(rbins)-1, rbins)
         
         hname = 'resp_eij_bin1'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(eijbins1)-1, eijbins1, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(eijbins1)-1, eijbins1, len(eijbins1)-1, eijbins1)
 
         hname = 'resp_eij_bin2'
-        self._hists[hname] = ROOT.TH2F(hname, hname, len(eijbins2)-1, eijbins2, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH2D(hname, hname, len(eijbins2)-1, eijbins2, len(eijbins2)-1, eijbins2)
     
         hname = 'fake_r'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
         
         hname = 'fake_eij_bin1'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins1)-1, eijbins1)
 
         hname = 'fake_eij_bin2'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins2)-1, eijbins2)
     
         hname = 'miss_r'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(rbins)-1, rbins)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(rbins)-1, rbins)
 
         hname = 'miss_eij_bin1'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins1)-1, eijbins1)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins1)-1, eijbins1)
         
         hname = 'miss_eij_bin2'
-        self._hists[hname] = ROOT.TH1F(hname, hname, len(eijbins2)-1, eijbins2)
+        self._hists[hname] = ROOT.TH1D(hname, hname, len(eijbins2)-1, eijbins2)
 
         # pt eta phi hists
         for c in ['match', 'fake', 'miss']:
             hname = f'reco_{c}_pt'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 450, 0, 45)
 
             hname = f'gen_{c}_pt'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 450, 0, 45)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 450, 0, 45)
 
             hname = f'reco_{c}_theta'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 30, 0.1, 3.1)
 
             hname = f'gen_{c}_theta'
-            self._hists[hname] = ROOT.TH1F(hname, hname, 30, 0.1, 3.1)
+            self._hists[hname] = ROOT.TH1D(hname, hname, 30, 0.1, 3.1)
 
 
     def bookResponseMatrices(self):
@@ -353,25 +359,27 @@ class MyResponse:
 
             if doAngular:
                 # For angular matching, select pairs having cost below threshold
-                matched_list = np.array([
+                matched = np.array([
                     (i, j, dists[i, j])
                     for i in range(dists.shape[0])
                     for j in range(dists.shape[1])
                     if dists[i, j] < matching_r
                 ])
-                if matched_list.size == 0:
-                    matched = np.empty((0,2), dtype=int)
-                else:
-                    matched_list = matched_list[matched_list[:,2].argsort()]
-                    matched = self.oneOnOneMatch(matched_list, 0)
-                    matched = self.oneOnOneMatch(matched, 1)
-                    matched = matched[:,:2]
+
+                matched = np.array(sorted(matched, key=lambda x: x[2]))
+    
+                matched = self.oneOnOneMatch(matched, 0)
+                matched = self.oneOnOneMatch(matched, 1)
+    
+                matched_reco = matched[:, 0]
+                matched_gen = matched[:, 1]
+                
             else:
                 matched_reco, matched_gen = linear_sum_assignment(dists)
                 matched = np.column_stack((matched_reco, matched_gen))
     
-                miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
-                fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
+            miss = np.setxor1d(np.array(range(len(px_gen)), 'i'), np.array(matched_gen, 'i'))
+            fake = np.setxor1d(np.array(range(len(px_reco)), 'i'), np.array(matched_reco, 'i'))
 
             # fill response matrices and histograms
             ## loop over matched
@@ -412,10 +420,12 @@ class MyResponse:
                     self._hists['reco2d_eij_r_bin1'].Fill(r_reco, Eij_reco)
                     self._hists['reco2d_eij_r_bin1_matchonly'].Fill(r_reco, Eij_reco)
                     self._hists['gen2d_eij_r_bin1'].Fill(r_gen, Eij_gen)
+                    self._hists['gen2d_eij_r_bin1_matchonly'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco2d_eij_r_bin2'].Fill(r_reco, Eij_reco)
                     self._hists['reco2d_eij_r_bin2_matchonly'].Fill(r_reco, Eij_reco)
                     self._hists['gen2d_eij_r_bin2'].Fill(r_gen, Eij_gen)
+                    self._hists['gen2d_eij_r_bin2_matchonly'].Fill(r_gen, Eij_gen)
 
                     self._hists['reco1d_eec'].Fill(r_reco, Eij_reco)
                     self._hists['gen1d_eec'].Fill(r_gen, Eij_gen)
@@ -552,5 +562,5 @@ if __name__ == "__main__":
     response.bookHistograms()
     response.bookResponseMatrices()
     response.loop()
-    response.normalize()
+    #response.normalize()
     response.writeToFile(fnameout)
