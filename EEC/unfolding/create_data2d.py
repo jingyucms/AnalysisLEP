@@ -27,19 +27,19 @@ from analysis_eec import *
 
 #bin_edge = bins+newbins
 
-bin_edge = calcBinEdge(0.002, np.pi/2, 100)
-#bin_edge = calcBinEdge(0.00001, 0.5, 100)
+#bin_edge = calcBinEdge(0.002, np.pi/2, 100)
+bin_edge = calcBinEdge(0.00001, 0.5, 100)
 
 datafile = '/eos/user/z/zhangj/ALEPH/EECNtuples/h_LEP1Data1994_recons_aftercut-MERGED.root'
 
-outfile = 'data_LEP1MC1994_v6.root'
+outfile = 'data_LEP1MC1994_z_v6.root'
 
 fin = ROOT.TFile.Open(datafile,'r')
 fout = ROOT.TFile.Open(outfile,'recreate')
 
 reco2d = ROOT.TH2D("EEC_2d", "", 200, np.array(bin_edge), len(eijbins)-1, np.array(eijbins))
 tmc = fin.Get('eec')
-tmc.Project('EEC_2d', 'eec:r')
+tmc.Project('EEC_2d', 'eec:z')
 
 counter = fin.Get('N')
 

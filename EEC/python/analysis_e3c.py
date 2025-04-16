@@ -14,12 +14,14 @@ class E3CAnalyzer:
         self._treco = reco_tree
         self._fout = ROOT.TFile(outname, 'RECREATE')
         hname = 'counter'
-        self._evt_counter = ROOT.TH1F(hname, hname, 2, 0, 2)
+        self._evt_counter = ROOT.TH1D(hname, hname, 2, 0, 2)
         self._otree1 = ROOT.TTree("eec", "flat output tree for eec plotting")
         self._otree2 = ROOT.TTree("e3c", "flat output tree for e3c plotting")
         self._otree3 = ROOT.TTree("e3c_full", "flat output tree for collinear safe e3c")
         self._otree4 = ROOT.TTree("e3c_spin", "flat output tree for spin correlation")
-        self._isGen = (treename == 'tgen')
+        self._isALEPHGen = (treename == 'tgen')
+        self._isGen = ("SHERPA" in outname or "HERWIG" in outname or "Belle" in outname) 
+        self._isPythia = ("PYTHIA" in outname)
         self._useJet = False
         self._studySpin = False
 
@@ -66,6 +68,14 @@ class E3CAnalyzer:
         theta = np.arccos(cos_theta)
         return theta
 
+    def calcAngleWithDirection(self, n1, n2):
+        cos_theta = np.dot(n1, n2) / (np.linalg.norm(n1) * np.linalg.norm(n2))
+        cos_theta = np.clip(cos_theta, -1.0, 1.0)  
+        theta = np.arccos(cos_theta)
+        cross = np.cross(n1, n2)
+        if cross[0] > 0: return theta
+        else: return 2*np.pi-theta
+
     def initializeTrees(self):
         tree_vars1 = {
             '_eec': 'eec', '_r': 'r', '_z': 'z'
@@ -102,6 +112,10 @@ class E3CAnalyzer:
         doubleLog2 = self.calcBinEdgeDoubleLog(0.001, np.pi/2, 150)
         log = self.calcBinEdgeLog(0.001, 1, 200)
 
+        phibins = 60
+        phibinning = np.linspace(0, 2*np.pi, phibins+1)
+        log2 = self.calcBinEdgeLog(0.0001, 1, 400)
+
         hist_params = {
             "cpt": (1000, 0, 100),
             "ceta": (100, -5, 5),
@@ -116,18 +130,21 @@ class E3CAnalyzer:
             "e3c_phi": (200, 0, np.pi/2),
             "e3c_x": (200, 0.5, 1),
             "e3c_y": (200, 0, 1),
-            "e3c_phiS": (200, 0, np.pi),
             "e3c_xy": (200, 0.5, 1, 200, 0, 1),
-            "e3c_r": (len(doubleLog2)-1, doubleLog2)
+            "e3c_r": (len(doubleLog2)-1, doubleLog2),
+            "spin_rL": (len(doubleLog1)-1, doubleLog1),
+            "spin_rS": (len(doubleLog1)-1, doubleLog1),
+            "spin_phi": (phibins, phibinning),
+            "spin_2d": (phibins, phibinning, len(log2)-1, log2)
         }
         for name, params in hist_params.items():
-            if len(params) == 3:
-                self._hists[name] = ROOT.TH1F(name, "", *params)
+            if len(params) <= 3:
+                self._hists[name] = ROOT.TH1D(name, "", *params)
             else:
-                self._hists[name] = ROOT.TH2F(name, "", *params)
+                self._hists[name] = ROOT.TH2D(name, "", *params)
 
         if self._useJet:
-            self._hists['e3c_rM_multij'] = ROOT.TH1F('e3c_rM_multij', '', len(doubleLog2)-1, doubleLog2)
+            self._hists['e3c_rM_multij'] = ROOT.TH1D('e3c_rM_multij', '', len(doubleLog2)-1, doubleLog2)
 
 
     def normalizeByBinWidth(self, h):
@@ -151,7 +168,7 @@ class E3CAnalyzer:
 
     def loopAndFillTrees(self):
         nEntries = self._treco.GetEntries()
-        nEntries = 10000 ### no more than 10000 events to reduce the disk space usage !!!
+        nEntries = 40000 ### no more than 40000 events to reduce the disk space usage !!!
         #nEntries = 1
         for iEvt in range(nEntries):
 
@@ -162,7 +179,8 @@ class E3CAnalyzer:
 
             self._evt_counter.Fill(0.5)
     
-            if self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5: continue
+            if not self._isGen and not self._isALEPHGen and (self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5): continue
+            if self._isALEPHGen and self._treco.passesSTheta < 0.5: continue
                 
             self._evt_counter.Fill(1.5)
     
@@ -239,7 +257,7 @@ class E3CAnalyzer:
                         n2 = self.calcNormV(m2, m3)
                             
                         self._e3cS[0] = E3
-                        self._phiS[0] = self.calcAngle(n1, n2)
+                        self._phiS[0] = self.calcAngleWithDirection(n1, n2)
                         self._rLS[0] = self.calcAngle(m1, m2m3)
                         self._rSS[0] = self.calcAngle(m2, m3)
                             
@@ -264,60 +282,54 @@ class E3CAnalyzer:
         nEntries = self._treco.GetEntries()
         #nEntries = 100
         for iEvt in range(nEntries):
+
+            if iEvt % 10000 == 0:
+                print(f"Processed {iEvt} events")
+            
             self._treco.GetEntry(iEvt)
 
             if self._useJet: self._tjet.GetEntry(iEvt)
 
             self._evt_counter.Fill(0.5)
     
-            if not self._isGen and (self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5): continue
-            if self._isGen and self._treco.passesSTheta < 0.5: continue
+            if not self._isGen and not self._isALEPHGen and (self._treco.passesSTheta < 0.5 or self._treco.passesNTrkMin < 0.5 or self._treco.passesTotalChgEnergyMin < 0.5): continue
+            if self._isALEPHGen and not self._isPythia and self._treco.passesSTheta < 0.5: continue
+            if self._isPythia and self._treco.passSphericity < 0.5: continue
                 
             self._evt_counter.Fill(1.5)
-    
-            E = self._treco.Energy
-            nref = self._tjet.nref
-            njet[0] = self._tjet.jtN if self._useJet else 0
-            
-            px_reco = np.array(self._treco.px)
-            py_reco = np.array(self._treco.py)
-            pz_reco = np.array(self._treco.pz)
-            m_reco = np.array(self._treco.mass)
-            c_reco = np.array(self._treco.charge)
-            theta_reco = np.array(self._treco.theta)
-            pt_reco = np.array(self._treco.pt)
-            eta_reco = np.array(self._treco.eta)
-            phi_reco = np.array(self._treco.phi)
-            hp_reco = np.array(self._treco.highPurity)
-    
-            sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 2.795) & (theta_reco > 0.348) & (hp_reco > 0.5)
-    
-            px_reco = px_reco[sel_reco]
-            py_reco = py_reco[sel_reco]
-            pz_reco = pz_reco[sel_reco]
-            m_reco = m_reco[sel_reco]
-            c_reco = c_reco[sel_reco]
-            theta_reco = theta_reco[sel_reco]
-            pt_reco = pt_reco[sel_reco]
-            eta_reco = eta_reco[sel_reco]
-            phi_reco = phi_reco[sel_reco]
+
+            try:
+                E = self._treco.Energy
+            except:
+                E = 90
+
+            if self._isPythia:
+                px_reco, py_reco, pz_reco, m_reco, c_reco, mom, pt_reco, eta_reco, phi_reco = (
+                np.array(getattr(self._treco, attr)) for attr in ['px', 'py', 'pz', 'mass', 'isCharged', 'p', 'pt', 'eta', 'phi']
+                )
+                theta_reco = np.arcsin(pt_reco/mom)
+                sel_reco = (abs(c_reco) > 0.5) & (pt_reco > 0.2) & (theta_reco < 2.795) & (theta_reco > 0.348)
+            else:
+                px_reco, py_reco, pz_reco, m_reco, c_reco, theta_reco, pt_reco, eta_reco, phi_reco, hp_reco = (
+                    np.array(getattr(self._treco, attr)) for attr in ['px', 'py', 'pz', 'mass', 'charge', 'theta', 'pt', 'eta', 'phi', 'highPurity']
+                )
+                sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 2.795) & (theta_reco > 0.348) & (hp_reco > 0.5)
+                
+            #print(sel_reco, px_reco)
+            px_reco, py_reco, pz_reco, m_reco, theta_reco, pt_reco, eta_reco, phi_reco = (
+                arr[sel_reco] for arr in [px_reco, py_reco, pz_reco, m_reco, theta_reco, pt_reco, eta_reco, phi_reco]
+            )
     
             Ei_reco = np.sqrt(px_reco**2 + py_reco**2 + pz_reco**2 + m_reco**2)
-    
-            ntrk = len(px_reco)
-    
             p3 = np.stack((px_reco, py_reco, pz_reco), axis=1)
-            dot_products = np.dot(p3, p3.T)
+            ntrk = len(p3)
+            
+            dot_products = p3 @ p3.T
             p3_mag = np.linalg.norm(p3, axis=1)
-    
-            p3_mag = np.round(p3_mag, 8)
-            dot_products = np.round(dot_products, 8)
+            outer_mag = np.outer(p3_mag, p3_mag)
             
-            cos_similarity = np.round(dot_products / np.outer(p3_mag, p3_mag), 8)
-    
-            cos_similarity = np.clip(cos_similarity, -1.0, 1.0)
-            
-            distances = np.round(np.arccos(cos_similarity), 8)
+            cos_similarity = np.clip(dot_products / outer_mag, -1.0, 1.0)
+            distances = np.arccos(cos_similarity)
     
             indices = np.arange(ntrk)
             pairs = list(combinations_with_replacement(indices, 3))
@@ -352,23 +364,23 @@ class E3CAnalyzer:
                     x = cos*rM/rL
                     y = math.sqrt(val)*rM/rL
 
-                    short_edge = R[0][1]
                     long_edge = R[2][1]
-                    
+                    short_edge = R[0][1]
                     common_vertex = set(long_edge).intersection(short_edge).pop()
 
-                    v1, v2 = long_edge
-                    v3 = short_edge[1] if short_edge[0] == common_vertex else short_edge[0]
-                    vertices = [v1, v2, v3]
+                    v1 = long_edge[0] if long_edge[1] == common_vertex else long_edge[1]
+                    v2, v3 = short_edge
+                    m1 = p3[v1]
+                    m2 = p3[v2]
+                    m3 = p3[v3]
 
-                    p1 = np.array([px_reco[v1], py_reco[v1], pz_reco[v1]])
-                    p2 = np.array([px_reco[v2], py_reco[v2], pz_reco[v2]])
-                    p3 = np.array([px_reco[v3], py_reco[v3], pz_reco[v3]])
-
-                    n1 = self.calcNormV(p1, p2+p3)
-                    n2 = self.calcNormV(p2, p3)
-
-                    phiS = self.calcAngle(n1, n2)
+                    m2m3 = m2 + m3
+                            
+                    n1 = self.calcNormV(m1, m2m3)
+                    n2 = self.calcNormV(m2, m3)
+                    spin_phi = self.calcAngleWithDirection(n1, n2)
+                    spin_rL = self.calcAngle(m1, m2m3)
+                    spin_rS = self.calcAngle(m2, m3)
                     
                     self._hists['e3c_rL'].Fill(rL, e3c)
                     self._hists['e3c_rM'].Fill(rM, e3c)
@@ -386,7 +398,13 @@ class E3CAnalyzer:
                     self._hists['e3c_xy'].Fill(x, y, e3c)
                     self._hists['e3c_zeta'].Fill(zeta, e3c)
                     self._hists['e3c_phi'].Fill(phi, e3c)
-                    self._hists['e3c_phiS'].Fill(phiS, e3c)
+
+                    self._hists['spin_rL'].Fill(spin_rL, e3c)
+                    self._hists['spin_rS'].Fill(spin_rS, e3c)
+                    self._hists['spin_2d'].Fill(spin_phi, spin_rS**2, e3c*spin_rL**2*spin_rS**2)
+                    if spin_rL**2 < 1 and spin_rS**2 < 0.1:
+                        self._hists['spin_phi'].Fill(spin_phi, e3c*spin_rL**2*spin_rS**2)
+                    
                 if len(set(p)) == 2:
                     unique, repetitive = self.find_unique_and_repetitive(p)
                     m = repetitive[0]
@@ -423,14 +441,15 @@ if __name__ == "__main__":
 
     filename = '/eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPH/LEP1Data1994P1_recons_aftercut-MERGED.root'
     #filename = '/eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPHMC/LEP1MC1994_recons_aftercut-001.root'
-    filenameout = 't_'+filename.split('/')[-1]
+    #filename = '/eos/user/z/zhangj/ALEPH/SamplesLEP1/HERWIG715/run_00/Belle_0_0.root'
+    filenameout = 'h_'+filename.split('/')[-1]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("infiles", nargs='?', default=filename, help="name of input files")
     parser.add_argument("outfile", nargs='?', default=filenameout, help="name of input files")
     args = parser.parse_args()
 
-    treename = 't'
+    treename = 'tgen'
     fin = ROOT.TFile.Open(args.infiles, 'r')
     t_hadrons = fin.Get(treename)
 
@@ -440,17 +459,17 @@ if __name__ == "__main__":
 
     analyzer = E3CAnalyzer(t_hadrons, treename, args.outfile)
     #analyzer.addJetTree(t_jet)
-    #analyzer.bookHistograms()
-    #analyzer.loopAndFillHists()
-    #analyzer.writeHistograms()
+    analyzer.bookHistograms()
+    analyzer.loopAndFillHists()
+    analyzer.writeHistograms()
     
     #analyzer.initializeTrees()
     #analyzer.loopAndFillTrees()
     #analyzer.writeTrees()
 
-    analyzer.initializeSpinTrees()
-    analyzer.loopAndFillTrees()
-    analyzer.writeSpinTrees()
+    #analyzer.initializeSpinTrees()
+    #analyzer.loopAndFillTrees()
+    #analyzer.writeSpinTrees()
 
     end = time.perf_counter()
 
