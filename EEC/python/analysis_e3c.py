@@ -280,7 +280,6 @@ class E3CAnalyzer:
 
     def loopAndFillHists(self):
         nEntries = self._treco.GetEntries()
-        #nEntries = 100
         for iEvt in range(nEntries):
 
             if iEvt % 10000 == 0:
@@ -401,7 +400,8 @@ class E3CAnalyzer:
 
                     self._hists['spin_rL'].Fill(spin_rL, e3c)
                     self._hists['spin_rS'].Fill(spin_rS, e3c)
-                    self._hists['spin_2d'].Fill(spin_phi, spin_rS**2, e3c*spin_rL**2*spin_rS**2)
+                    if spin_rL**2 < 1:
+                        self._hists['spin_2d'].Fill(spin_phi, spin_rS**2, e3c*spin_rL**2*spin_rS**2)
                     if spin_rL**2 < 1 and spin_rS**2 < 0.1:
                         self._hists['spin_phi'].Fill(spin_phi, e3c*spin_rL**2*spin_rS**2)
                     
