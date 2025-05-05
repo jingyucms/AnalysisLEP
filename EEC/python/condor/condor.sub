@@ -1,0 +1,12 @@
+universe = vanilla
+executable = run_condor.sh
+Output = ./condorOut/condor_$ENV(generator)_$ENV(f).stdout
+Error = ./condorOut/condor_$ENV(generator)_$ENV(f).stderr
+Log = ./condorOut/condor_$ENV(generator)_$ENV(f).log
+Arguments = analysis_eec.py $ENV(p) h$ENV(generator)_$ENV(f)
++JobFlavour  = "nextweek"
+RequestCpus = 4
+x509userproxy = $ENV(X509_USER_PROXY)
+use_x509userproxy = True
+getenv= True
+queue 1
