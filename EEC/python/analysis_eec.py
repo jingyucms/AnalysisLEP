@@ -96,7 +96,7 @@ eijbins2 = [0.0, 0.0001, 0.0002, 0.0005, 0.00075, 0.001, 0.00125, 0.0015, 0.0017
 0.03, 0.04, 0.05, 0.07, 0.10, 0.15, 0.20, 0.3, 1]
 
 bins_theta = calcBinEdge(0.002, np.pi/2, 100)
-bins_z = calcBinEdge(0.00001, 0.5, 100)
+bins_z = calcBinEdge(0.000001, 0.5, 100)
 
 # 0) A one‐bin “counter” histogram
 h0 = ROOT.TH1D("N", "", 2, 0, 2)
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     treename = 't'
-    if isGen: treename = 'tgenBefore'
+    if isGen: treename = 'tt'
     
     fin = ROOT.TFile.Open(args.infiles, 'r')
     t_hadrons = fin.Get(treename)
@@ -193,7 +193,6 @@ if __name__ == "__main__":
     N=0
 
     for iEvt in range(t_hadrons.GetEntries()):
-    #for iEvt in range(1000):
         t_hadrons.GetEntry(iEvt)
 
         h0.Fill(0.5)
@@ -213,15 +212,14 @@ if __name__ == "__main__":
         else:
             conversion = conversion_veto_mask(eta_reco, phi_reco, c_reco, pwflag, 0.05, 0.05)
             #sel_reco = (abs(c_reco) > 0.1) & conversion
-            #sel_reco = (abs(c_reco) > 0.1) & (hp_reco > 0.5)
-            sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 160*np.pi/180) & (theta_reco > 20*np.pi/180) & conversion
+            sel_reco = (abs(c_reco) > 0.1) & (hp_reco > 0.5)
+            #sel_reco = (abs(c_reco) > 0.1) & (pt_reco > 0.2) & (theta_reco < 160*np.pi/180) & (theta_reco > 20*np.pi/180) & conversion
             mask_reco = ~conversion
+            theta_conv = theta_reco
+            theta_conv = theta_conv[mask_reco]
 
-        theta_conv = theta_reco
-        theta_conv = theta_conv[mask_reco]
-
-        for t in theta_conv:
-            h1d["eta_conv_ele"].Fill(t)
+            for t in theta_conv:
+                h1d["eta_conv_ele"].Fill(t)
             
         px_reco, py_reco, pz_reco, m_reco, c_reco, theta_reco, pt_reco, eta_reco, phi_reco = (
             arr[sel_reco] for arr in [px_reco, py_reco, pz_reco, m_reco, c_reco, theta_reco, pt_reco, eta_reco, phi_reco]

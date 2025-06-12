@@ -1,10 +1,10 @@
 #!/bin/bash
 
-export generator=gen
+export generator=genBefore
 
-for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPHMC/*1994*.root`
+#for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPHMC/*1994*.root`
 #for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/ALEPH/*1994*.root`
-#for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/HERWIG7/run_00/*.root`
+for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/HERWIG7/run_00/*.root`
 #for FILE_PATH in `ls /eos/user/z/zhangj/ALEPH/SamplesLEP1/SHERPA/run_00/*.root`
 do
     FILE_NAME=$(basename "$FILE_PATH")
